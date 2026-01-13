@@ -2,7 +2,7 @@
 
 // adapted from https://stackoverflow.com/questions/2588875/whats-the-best-way-to-draw-a-fullscreen-quad-in-opengl-3-2
 
-layout (location=0) out vec2 texcoords; // normalized for the viewport
+layout (location=1) out vec2 texcoords; // normalized for the viewport
 
 void main() {
     vec2 vertices[3]=vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1, 3));

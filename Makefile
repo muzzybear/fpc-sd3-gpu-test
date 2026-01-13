@@ -1,6 +1,6 @@
 BUILDDIR = build
 
-SHADERS = fullscreen.vert.glsl solidcolor.frag.glsl
+SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl solidcolor.frag.glsl uv_out.frag.glsl
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
