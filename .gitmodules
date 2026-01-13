@@ -1,0 +1,3 @@
+[submodule "3rdparty/SDL3-for-Pascal"]
+	path = 3rdparty/SDL3-for-Pascal
+	url = https://github.com/PascalGameDevelopment/SDL3-for-Pascal
