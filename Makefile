@@ -2,13 +2,15 @@ BUILDDIR = build
 
 DEBUGFLAGS = -gl -gh
 
-SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl solidcolor.frag.glsl uv_out.frag.glsl
+SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
+	  solidcolor.frag.glsl uv_out.frag.glsl
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
 all: $(BUILDDIR)/foo $(SHADEROBJS)
+.PHONY: all
 
-$(BUILDDIR)/foo: foo.pas
+$(BUILDDIR)/foo: foo.pas Matrix3DMath.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) foo.pas
 
