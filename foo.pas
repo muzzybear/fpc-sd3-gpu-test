@@ -2,7 +2,7 @@
 {$H+}
 {$modeswitch ADVANCEDRECORDS}
 
-{$UNITPATH 3rdparty/SDL3-for-Pascal/units/}
+{$UNITPATH 3rdparty/Lazarus-SDL-3.0-Packages-and-Examples/packages/}
 
 uses
     Sysutils, SDL3, ctypes, matrix, Matrix3DMath, Math;
@@ -204,7 +204,7 @@ var
 begin
     info := default(TSDL_GPUTextureCreateInfo);
     with info do begin
-        type_ := SDL_GPU_TEXTURETYPE_2D;
+        _type := SDL_GPU_TEXTURETYPE_2D;
         sample_count := SDL_GPU_SAMPLECOUNT_1;
         width := width_;
         height := height_;
@@ -465,10 +465,10 @@ begin
     begin
         while (SDL_PollEvent(@event)) do
         begin
-            if event.type_ = SDL_EVENT_QUIT then begin
+            if event._type = SDL_EVENT_QUIT then begin
                 quitting := true;
             end;
-            if event.type_ = SDL_EVENT_KEY_DOWN then begin
+            if event._type = SDL_EVENT_KEY_DOWN then begin
                 if event.key.key = SDLK_ESCAPE then begin
                     quitting := true;
                 end;
