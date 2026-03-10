@@ -18,6 +18,10 @@ var
     Device: PSDL_GPUDevice = nil;
     Renderer: PSDL_Renderer = nil;
 
+    lightmap: PSDL_Texture = nil;
+    rs_lightgradient: PSDL_GPURenderState = nil;
+    lightgradient_hack: PSDL_Texture = nil;
+
     groundtransitions: PSDL_Texture = nil;
 
 function loadshader(name: String; stage_: TSDL_GPUShaderStage; numSamplers: Integer; numUniforms: Integer) : PSDL_GPUShader;
@@ -136,6 +140,30 @@ begin
         Exit;
     end;
 
+    lightmap := SDL_CreateTexture(Renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, screen_width, screen_height);
+    if lightmap = nil then
+    begin
+        SDL_Log(PChar(Format('Couldn''t create lightmap texture: %s', [SDL_GetError])));
+        Exit;
+    end;
+    SDL_SetTextureBlendMode(lightmap, SDL_BLENDMODE_MOD);
+
+    rsinfo := Default(TSDL_GPURenderStateCreateInfo);
+    with rsinfo do
+    begin
+        fragment_shader := loadshader('light_gradient.frag.spv', SDL_GPU_SHADERSTAGE_FRAGMENT, 0, 0);
+    end;
+
+    rs_lightgradient := SDL_CreateGPURenderState(Renderer, @rsinfo);
+
+    // we need a dummy texture or SDL nukes the UVs even when using SDL_RenderGeometry
+    lightgradient_hack := SDL_CreateTexture(Renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STATIC, 1, 1);
+    SDL_SetTextureBlendMode(lightgradient_hack, SDL_BLENDMODE_ADD);
+    // TODO blendmode should maybe be maximum instead
+    //SDL_ComposeCustomBlendMode();
+
+    // FIXME check creation
+
     groundtransitions := IMG_LoadTexture(Renderer, PChar('assets/tileset-groundtransitions.png'));
     if groundtransitions = nil then
     begin
@@ -144,6 +172,25 @@ begin
     end;
 
     initmap;
+end;
+
+procedure renderlights;
+var
+    rect: TSDL_FRect;
+begin
+    SDL_SetRenderTarget(Renderer, lightmap);
+    SDL_SetRenderDrawColorFloat(Renderer, 0.2,0.2,0.2, 1.0);
+    SDL_RenderClear(Renderer);
+
+    SDL_SetRenderDrawColorFloat(Renderer, 1.0, 1.0, 1.0, 1.0);
+    SDL_SetGPURenderState(Renderer, rs_lightgradient);
+    rect.x := 50; rect.y := 50; rect.w := 300; rect.h := 300;
+    SDL_RenderTexture(Renderer, lightgradient_hack, nil, @rect);
+    rect.x := 250; rect.y := 100; rect.w := 300; rect.h := 300;
+    SDL_RenderTexture(Renderer, lightgradient_hack, nil, @rect);
+    SDL_SetGPURenderState(Renderer, nil);
+
+    SDL_SetRenderTarget(Renderer, nil);
 end;
 
 procedure render;
@@ -175,6 +222,8 @@ begin
         end;
     end;
 
+    renderlights;
+    SDL_RenderTexture(Renderer, lightmap, nil, nil);
 
     SDL_SetRenderDrawColorFloat(Renderer, 1.0, 1.0, 1.0, 1.0);
     SDL_RenderDebugText(Renderer, 10, 10, PChar('Testing'));
@@ -213,7 +262,9 @@ begin
 
     mainloop;
 
+    SDL_DestroyTexture(lightmap);
     SDL_DestroyTexture(groundtransitions);
+    SDL_DestroyGPURenderState(rs_lightgradient);
     SDL_DestroyRenderer(Renderer);
     SDL_ReleaseWindowFromGPUDevice(Device, Window);
     SDL_DestroyWindow(Window);

@@ -4,7 +4,8 @@ DEBUGFLAGS = -gl -gh
 FPCFLAGS = -Mobjfpc
 
 SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
-	  solidcolor.frag.glsl uv_out.frag.glsl desaturate.frag.glsl
+	solidcolor.frag.glsl uv_out.frag.glsl desaturate.frag.glsl \
+	light_gradient.frag.glsl
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
