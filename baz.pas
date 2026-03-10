@@ -5,7 +5,7 @@
 {$UNITPATH 3rdparty/Lazarus-SDL-3.0-Packages-and-Examples/packages/}
 
 uses
-    Sysutils, SDL3, SDL3_Image, ctypes, matrix, Math;
+    Sysutils, SDL3, SDL3_Image, ctypes, matrix, Matrix3DMath, Math;
 
 const
     screen_width = 640;
@@ -18,8 +18,7 @@ var
     Device: PSDL_GPUDevice = nil;
     Renderer: PSDL_Renderer = nil;
 
-    rs_foo: PSDL_GPURenderState = nil;
-    bear: PSDL_Texture = nil;
+    groundtransitions: PSDL_Texture = nil;
 
 function loadshader(name: String; stage_: TSDL_GPUShaderStage; numSamplers: Integer; numUniforms: Integer) : PSDL_GPUShader;
 var
@@ -70,9 +69,13 @@ end;
 
 // -----
 
+var
+    map: array[0..50,0..50] of integer;
+
 procedure init;
 var
     rsinfo : TSDL_GPURenderStateCreateInfo;
+    x,y : Integer;
 begin
     if not SDL_Init(SDL_INIT_VIDEO) then
     begin
@@ -103,51 +106,51 @@ begin
         Exit;
     end;
 
-    rsinfo := Default(TSDL_GPURenderStateCreateInfo);
-    with rsinfo do
+    groundtransitions := IMG_LoadTexture(Renderer, PChar('assets/tileset-groundtransitions.png'));
+    if groundtransitions = nil then
     begin
-        fragment_shader := loadshader('desaturate.frag.spv', SDL_GPU_SHADERSTAGE_FRAGMENT, 1, 1);
+        SDL_Log(PChar(Format('Couldn''t find tileset: %s', [SDL_GetError])));
+        Exit;
     end;
 
-    rs_foo := SDL_CreateGPURenderState(Renderer, @rsinfo);
-
-    bear := IMG_LoadTexture(Renderer, PChar('assets/bear-1024-pexels-jiri-mikolas-7183267.jpg'));
-    if bear = nil then
+    for y:=low(map) to high(map) do
     begin
-        SDL_Log(PChar(Format('Couldn''t find bear: %s', [SDL_GetError])));
-        Exit;
+        for x:=low(map[y]) to high(map[y]) do
+        begin
+            map[y][x] := Random(4);
+        end;
     end;
 end;
 
-
-type
-    TDesaturateParams = packed record
-        amount: Single;
-    end;
-
 procedure render;
 var
-    time: Single;
-    rect: TSDL_FRect;
-    params: TDesaturateParams;
+    src, dst: TSDL_FRect;
+    i, j: Integer;
+    a,b,c,d,idx: Integer;
 
 begin
-    time := SDL_GetTicks() / 1000.0;
-
     SDL_SetRenderDrawColorFloat(Renderer, 0.2, 0.2, 0.2, 1.0);
     SDL_RenderClear(Renderer);
 
+    src.w := 32; src.h := 32;
+    dst.w := 32; dst.h := 32;
+
     SDL_SetRenderDrawColorFloat(Renderer, 0.2, 0.8, 0.2, 1.0);
-    with rect do begin
-        x := 20; y:= 30; w := 400; h := 400;
+    for j:=0 to 14 do begin
+        for i:=0 to 19 do begin
+            a := map[j][i];
+            b := map[j][i+1];
+            c := map[j+1][i];
+            d := map[j+1][i+1];
+            idx := a*4*4*4 + b*4*4 + c*4 + d;
+            src.x := (idx mod 16)*32;
+            src.y := (idx div 16)*32;
+            dst.x := 32*i;
+            dst.y := 32*j;
+            SDL_RenderTexture(Renderer, groundtransitions, @src, @dst);
+        end;
     end;
 
-    params := Default(TDesaturateParams);
-    params.amount := 0.5 + sin(time*4)*0.5;
-    SDL_SetGPURenderStateFragmentUniforms(rs_foo, 0, @params, sizeof(params));
-    SDL_SetGPURenderState(Renderer, rs_foo);
-    SDL_RenderTexture(Renderer, bear, nil, @rect);
-    SDL_SetGPURenderState(Renderer, nil);
 
     SDL_SetRenderDrawColorFloat(Renderer, 1.0, 1.0, 1.0, 1.0);
     SDL_RenderDebugText(Renderer, 10, 10, PChar('Testing'));
@@ -186,8 +189,7 @@ begin
 
     mainloop;
 
-    SDL_DestroyTexture(bear);
-    SDL_DestroyGPURenderState(rs_foo);
+    SDL_DestroyTexture(groundtransitions);
     SDL_DestroyRenderer(Renderer);
     SDL_ReleaseWindowFromGPUDevice(Device, Window);
     SDL_DestroyWindow(Window);

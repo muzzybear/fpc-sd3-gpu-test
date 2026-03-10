@@ -8,7 +8,7 @@ SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
-APPS = foo bar
+APPS = foo bar baz
 APPBINS = $(addprefix $(BUILDDIR)/,$(APPS))
 
 all: $(APPBINS) $(SHADEROBJS)
@@ -21,9 +21,13 @@ $(BUILDDIR)/foo: foo.pas Matrix3DMath.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) foo.pas
 
-$(BUILDDIR)/bar: bar.pas Matrix3DMath.pas
+$(BUILDDIR)/bar: bar.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) bar.pas
+
+$(BUILDDIR)/baz: baz.pas
+	@mkdir -p $(BUILDDIR)
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) baz.pas
 
 $(BUILDDIR)/%.vert.spv: %.vert.glsl
 	@mkdir -p $(BUILDDIR)
