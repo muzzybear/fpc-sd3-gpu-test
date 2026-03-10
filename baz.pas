@@ -76,6 +76,7 @@ procedure init;
 var
     rsinfo : TSDL_GPURenderStateCreateInfo;
     x,y : Integer;
+    i : Integer;
 begin
     if not SDL_Init(SDL_INIT_VIDEO) then
     begin
@@ -113,12 +114,33 @@ begin
         Exit;
     end;
 
-    for y:=low(map) to high(map) do
+    for x:=low(map[y]) to high(map[y]) do
     begin
-        for x:=low(map[y]) to high(map[y]) do
+        map[low(map)][x] := 3;
+        map[high(map)][x] := 3;
+        map[low(map)+1][x] := 3;
+        map[high(map)-1][x] := 3;
+    end;
+
+    for y:=low(map)+2 to high(map)-2 do
+    begin
+        map[y][low(map[y])] := 3;
+        map[y][high(map[y])] := 3;
+        map[y][low(map[y])+1] := 3;
+        map[y][high(map[y])-1] := 3;
+        for x:=low(map[y])+2 to high(map[y])-2 do
         begin
             map[y][x] := Random(4);
         end;
+    end;
+
+    for i:=0 to 3500 do
+    begin
+        y:=randomRange(low(map)+2, high(map)-2);
+        x:=randomRange(low(map[y])+2, high(map[y])-2);
+        map[y][x] := map[y+randomRange(-2,+2)][x+randomRange(-2,+2)];
+        map[y+randomRange(-1,+1)][x+randomRange(-1,+1)] := map[y][x];
+        map[y+randomRange(-1,+1)][x+randomRange(-1,+1)] := map[y][x];
     end;
 end;
 
