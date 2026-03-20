@@ -65,13 +65,6 @@ begin
 end;
 
 type
-    TVertex3D = packed record
-        x,y,z: Single; // vec3
-        r,g,b: Single; // vec3
-    end;
-    PVertex3D = ^TVertex3D;
-
-type
     TPipeline = class
     public
         handle: PSDL_GPUGraphicsPipeline;
@@ -91,8 +84,6 @@ type
         vertexAttributes : array of TSDL_GPUVertexAttribute;
         function CreatePipeline : TPipeline;
     end;
-
-    // TODO wrapper class for shaders
 
 destructor TPipeline.Destroy;
 begin
@@ -223,26 +214,191 @@ end;
 
 // -----
 
-function CreateVertexBuffer: PSDL_GPUBuffer;
-var
-    info: TSDL_GPUBufferCreateInfo;
-    buffer: PSDL_GPUBuffer = nil;
-begin
-    info := default(TSDL_GPUBufferCreateInfo);
-    with info do begin
-        usage := SDL_GPU_BUFFERUSAGE_VERTEX;
-        size := SizeOf(TVertex3D) * 3*12;
+type
+    generic TGenericMeshBuilder<T> = class
+        vertices: array of T;
+        indices: array of Integer;
+    public
+        function addVertex(v: T) : Integer;
+        procedure addIndex(i: Integer);
+        procedure addTriangle(v0, v1, v2: T);
+        procedure addQuad(v0, v1, v2, v3: T);
+
+        function getVertices: Pointer;
+        function numVertices: Integer;
+        function getIndices: PInteger;
+        function numIndices: Integer;
     end;
 
-    buffer := SDL_CreateGPUBuffer(Device, @info);
+function TGenericMeshBuilder.addVertex(v: T) : Integer;
+begin
+    SetLength(vertices, Length(vertices)+1);
+    vertices[Length(vertices)-1] := v;
+    Result := Length(vertices)-1;
+end;
 
-    result := buffer;
+procedure TGenericMeshBuilder.addIndex(i: Integer);
+begin
+    if i<0 then i := Length(vertices) + i;
+    SetLength(indices, Length(indices)+1);
+    indices[Length(indices)-1] := i;
+end;
+
+procedure TGenericMeshBuilder.addTriangle(v0, v1, v2: T);
+begin
+    addIndex(addVertex(v0));
+    addIndex(addVertex(v1));
+    addIndex(addVertex(v2));
+end;
+
+procedure TGenericMeshBuilder.addQuad(v0, v1, v2, v3: T);
+begin
+    // vertices ordered in Z shape
+    addVertex(v0);
+    addVertex(v1);
+    addVertex(v2);
+    addVertex(v3);
+    addIndex(-4);
+    addIndex(-3);
+    addIndex(-2);
+    addIndex(-3);
+    addIndex(-1);
+    addIndex(-2);
+end;
+
+function TGenericMeshBuilder.getVertices: Pointer;
+begin
+    Result := @vertices[0];
+end;
+
+function TGenericMeshBuilder.numVertices: Integer;
+begin
+    Result := Length(vertices);
+end;
+
+function TGenericMeshBuilder.getIndices: PInteger;
+begin
+    Result := @indices[0];
+end;
+
+function TGenericMeshBuilder.numIndices: Integer;
+begin
+    Result := Length(indices);
+end;
+
+type
+    TVertex3D = packed record
+        x,y,z: Single; // vec3
+        r,g,b: Single; // vec3
+    end;
+    PVertex3D = ^TVertex3D;
+
+    TMeshBuilder = specialize TGenericMeshBuilder<TVertex3D>;
+
+    TMesh = record
+        vb: PSDL_GPUBuffer;
+        ib: PSDL_GPUBuffer;
+        numVertices: Integer;
+        numIndices: Integer;
+    end;
+    PMesh = ^TMesh;
+
+function CreateGPUBuffer(usage: TSDL_GPUBufferUsageFlags; size: Integer): PSDL_GPUBuffer;
+var
+    info: TSDL_GPUBufferCreateInfo;
+begin
+    info := default(TSDL_GPUBufferCreateInfo);
+    info.usage := usage;
+    info.size := size;
+
+    result := SDL_CreateGPUBuffer(Device, @info);
+end;
+
+procedure rebuildMesh(mesh: PMesh; mb: TMeshBuilder);
+var
+    cmdbuf: PSDL_GPUCommandBuffer;
+    copypass: PSDL_GPUCopyPass;
+    src: TSDL_GPUTransferBufferLocation;
+    dst: TSDL_GPUBufferRegion;
+    vtb, itb: PSDL_GPUTransferBuffer;
+    vtb_info, itb_info: TSDL_GPUTransferBufferCreateInfo;
+    data: Pointer;
+
+begin
+    assert(mesh <> nil);
+    assert(mb.numVertices <> 0);
+
+    if mesh^.vb <> nil then SDL_ReleaseGPUBuffer(Device, mesh^.vb);
+    if mesh^.ib <> nil then SDL_ReleaseGPUBuffer(Device, mesh^.ib);
+    mesh^ := Default(TMesh);
+
+    // prepare vertices for upload
+    vtb_info := default(TSDL_GPUTransferBufferCreateInfo);
+    with vtb_info do begin
+        usage := SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        size := sizeof(TVertex3D)*mb.numVertices;
+    end;
+    vtb := SDL_CreateGPUTransferBuffer(Device, @vtb_info);
+
+    data := SDL_MapGPUTransferBuffer(Device, vtb, false);
+    Move(mb.getVertices^, data^, sizeof(TVertex3D)*mb.numVertices);
+    SDL_UnmapGPUTransferBuffer(Device, vtb);
+
+    // prepare indices for upload
+    itb_info := default(TSDL_GPUTransferBufferCreateInfo);
+    with itb_info do begin
+        usage := SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        size := sizeof(Integer)*mb.numIndices;
+    end;
+    itb := SDL_CreateGPUTransferBuffer(Device, @itb_info);
+
+    data := SDL_MapGPUTransferBuffer(Device, itb, false);
+    Move(mb.getIndices^, data^, sizeof(Integer)*mb.numIndices);
+    SDL_UnmapGPUTransferBuffer(Device, itb);
+
+    mesh^.vb := CreateGPUBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, SizeOf(TVertex3D) * mb.numVertices);
+    mesh^.numVertices := mb.numVertices;
+
+    cmdbuf := SDL_AcquireGPUCommandBuffer(Device);
+    copypass := SDL_BeginGPUCopyPass(cmdbuf);
+
+    src := default(TSDL_GPUTransferBufferLocation);
+    src.transfer_buffer := vtb;
+    dst := default(TSDL_GPUBufferRegion);
+    with dst do begin
+        buffer := mesh^.vb;
+        offset := 0;
+        size := SizeOf(TVertex3D) * mb.numVertices;
+    end;
+    SDL_UploadToGPUBuffer(copypass, @src, @dst, true);
+
+    if mb.numIndices <> 0 then
+    begin
+        mesh^.ib := CreateGPUBuffer(SDL_GPU_BUFFERUSAGE_INDEX, SizeOf(Integer) * mb.numIndices);
+        mesh^.numIndices := mb.numIndices;
+
+        src := default(TSDL_GPUTransferBufferLocation);
+        src.transfer_buffer := itb;
+        dst := default(TSDL_GPUBufferRegion);
+        with dst do begin
+            buffer := mesh^.ib;
+            offset := 0;
+            size := SizeOf(Integer) * mb.numIndices;
+        end;
+        SDL_UploadToGPUBuffer(copypass, @src, @dst, true);
+    end;
+
+    SDL_EndGPUCopyPass(copypass);
+    SDL_SubmitGPUCommandBuffer(cmdbuf);
+
+    SDL_ReleaseGPUTransferBuffer(Device, itb);
+    SDL_ReleaseGPUTransferBuffer(Device, vtb);
 end;
 
 var
     bg_pipeline, fg_pipeline: TPipeline;
-    VertexBuffer: PSDL_GPUBuffer = nil;
     DepthBuffer : TGPUTexture;
+    dummyobject: TMesh;
 
 procedure init;
 const
@@ -252,14 +408,9 @@ const
         (location: 1; buffer_slot: 0; format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; offset: 4*3)
     );
 var
-    cmdbuf: PSDL_GPUCommandBuffer;
-    copypass: PSDL_GPUCopyPass;
-    src: TSDL_GPUTransferBufferLocation;
-    dst: TSDL_GPUBufferRegion;
-    VertexTransferBuffer: PSDL_GPUTransferBuffer;
-    vtb_info: TSDL_GPUTransferBufferCreateInfo;
-    data: PVertex3D;
     i: Integer;
+    v0,v1,v2,v3: TVertex3D;
+    mb: TMeshBuilder;
 begin
     if not SDL_Init(SDL_INIT_VIDEO) then
     begin
@@ -306,56 +457,60 @@ begin
         Destroy;
     end;
 
-    VertexBuffer := CreateVertexBuffer;
+    dummyobject := Default(TMesh);
 
-    vtb_info := default(TSDL_GPUTransferBufferCreateInfo);
-    with vtb_info do begin
-        usage := SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        size := Sizeof(TVertex3D)*3*12;
-    end;
-    VertexTransferBuffer := SDL_CreateGPUTransferBuffer(device, @vtb_info);
-
-    data := SDL_MapGPUTransferBuffer(Device, VertexTransferBuffer, false);
-    for i:=0 to 11 do begin
-        with data[i*3] do begin
+    mb := TMeshBuilder.Create;
+    for i:=0 to 11 do
+    begin
+        with v0 do begin
             x:=sin(i*2*PI/12);
             y:=cos(i*2*PI/12);
             z:=0.3;
             r:=1; g:=0; b:=0;
         end;
-        with data[i*3+1] do begin
+        with v1 do begin
             x:=sin(i*2*PI/12);
             y:=cos(i*2*PI/12);
             z:=-0.3;
             r:=1; g:=1; b:=0;
         end;
-        with data[i*3+2] do begin
+        with v2 do begin
             x:=sin((i+0.8)*2*PI/12);
             y:=cos((i+0.8)*2*PI/12);
-            z:=0;
+            z:=0.1;
             r:=1; g:=1; b:=1;
         end;
+        with v3 do begin
+            x:=sin((i+0.8)*2*PI/12);
+            y:=cos((i+0.8)*2*PI/12);
+            z:=-0.1;
+            r:=1; g:=1; b:=1;
+        end;
+        mb.addQuad(v0,v1,v2,v3);
     end;
-    SDL_UnmapGPUTransferBuffer(Device, VertexTransferBuffer);
-
-    cmdbuf := SDL_AcquireGPUCommandBuffer(Device);
-    copypass := SDL_BeginGPUCopyPass(cmdbuf);
-    src := default(TSDL_GPUTransferBufferLocation);
-    src.transfer_buffer := VertexTransferBuffer;
-    dst := default(TSDL_GPUBufferRegion);
-    with dst do begin
-        buffer := VertexBuffer;
-        offset := 0;
-        size := SizeOf(TVertex3D)*3*12;
-    end;
-
-    SDL_UploadToGPUBuffer(copypass, @src, @dst, true);
-    SDL_EndGPUCopyPass(copypass);
-    SDL_SubmitGPUCommandBuffer(cmdbuf);
+    rebuildMesh(@dummyobject, mb);
+    mb.free;
 
     DepthBuffer := TGPUTexture.Create(screen_width, screen_height, SDL_GPU_TEXTUREFORMAT_D16_UNORM, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
 end;
 
+procedure renderMesh(renderpass: PSDL_GPURenderPass; mesh: TMesh);
+var
+    binding: TSDL_GPUBufferBinding;
+begin
+    binding := default(TSDL_GPUBufferBinding);
+    binding.buffer := mesh.vb;
+    SDL_BindGPUVertexBuffers(renderpass, 0, @binding, 1);
+
+    if mesh.numIndices = 0 then
+    begin
+        SDL_DrawGPUPrimitives(renderpass, mesh.numVertices, 1, 0, 0);
+    end else begin
+        binding.buffer := mesh.ib;
+        SDL_BindGPUIndexBuffer(renderpass, @binding, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        SDL_DrawGPUIndexedPrimitives(renderpass, mesh.numIndices, 1, 0, 0, 0);
+    end;
+end;
 
 procedure render;
 var
@@ -365,7 +520,6 @@ var
     colortargetinfo: TSDL_GPUColorTargetInfo;
     depthtargetinfo: TSDL_GPUDepthStencilTargetInfo;
     renderpass: PSDL_GPURenderPass;
-    binding: TSDL_GPUBufferBinding;
     transform: TMatrix4_single;
 
 begin
@@ -413,11 +567,6 @@ begin
         cycle := true;
     end;
 
-    binding := default(TSDL_GPUBufferBinding);
-    with binding do begin
-        buffer := VertexBuffer;
-    end;
-
     // render
     renderpass := SDL_BeginGPURenderPass(cmdbuf, @colortargetinfo, 1, @depthtargetinfo);
 
@@ -425,7 +574,6 @@ begin
     SDL_DrawGPUPrimitives(renderPass, 3, 1, 0, 0); // one fullscreen triangle
 
     SDL_BindGPUGraphicsPipeline(renderpass, fg_pipeline.handle);
-    SDL_BindGPUVertexBuffers(renderpass, 0, @binding, 1);
     transform.init_identity;
     transform := rotateZ(time*1.7) * transform;
     transform := rotateY(time) * transform;
@@ -434,10 +582,10 @@ begin
     // GPU wants column-major, but TMatrix4_single is row-major
     transform := transform.transpose;
     SDL_PushGPUVertexUniformData(cmdbuf, 0, @transform.data, SizeOf(transform.data));
-    SDL_DrawGPUPrimitives(renderPass, 3*12, 1, 0, 0); // one triangle
+
+    renderMesh(renderpass, dummyobject);
 
     SDL_EndGPURenderPass(renderpass);
-
 
     SDL_SubmitGPUCommandBuffer(cmdbuf);
 end;
