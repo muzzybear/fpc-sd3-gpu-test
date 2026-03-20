@@ -311,23 +311,11 @@ begin
     vtb_info := default(TSDL_GPUTransferBufferCreateInfo);
     with vtb_info do begin
         usage := SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        size := Sizeof(TVertex3D)*3;
+        size := Sizeof(TVertex3D)*3*12;
     end;
     VertexTransferBuffer := SDL_CreateGPUTransferBuffer(device, @vtb_info);
 
     data := SDL_MapGPUTransferBuffer(Device, VertexTransferBuffer, false);
-    with data[0] do begin
-        x:=-0.5; y:=-0.5; z:=0;
-        r:=1; g:=0; b:=0;
-    end;
-    with data[1] do begin
-        x:=0.5; y:=-0.5; z:=0;
-        r:=1; g:=0; b:=0;
-    end;
-    with data[2] do begin
-        x:=0; y:=0.5; z:=0;
-        r:=1; g:=1; b:=1;
-    end;
     for i:=0 to 11 do begin
         with data[i*3] do begin
             x:=sin(i*2*PI/12);
