@@ -400,6 +400,47 @@ var
     DepthBuffer : TGPUTexture;
     dummyobject: TMesh;
 
+procedure initmesh;
+var
+    i: Integer;
+    v0,v1,v2,v3: TVertex3D;
+    mb: TMeshBuilder;
+begin
+    dummyobject := Default(TMesh);
+
+    mb := TMeshBuilder.Create;
+    for i:=0 to 11 do
+    begin
+        with v0 do begin
+            x:=sin(i*2*PI/12);
+            y:=cos(i*2*PI/12);
+            z:=0.3;
+            r:=1; g:=0; b:=0;
+        end;
+        with v1 do begin
+            x:=sin(i*2*PI/12);
+            y:=cos(i*2*PI/12);
+            z:=-0.3;
+            r:=1; g:=1; b:=0;
+        end;
+        with v2 do begin
+            x:=sin((i+0.8)*2*PI/12);
+            y:=cos((i+0.8)*2*PI/12);
+            z:=0.1;
+            r:=1; g:=1; b:=1;
+        end;
+        with v3 do begin
+            x:=sin((i+0.8)*2*PI/12);
+            y:=cos((i+0.8)*2*PI/12);
+            z:=-0.1;
+            r:=1; g:=1; b:=1;
+        end;
+        mb.addQuad(v0,v1,v2,v3);
+    end;
+    rebuildMesh(@dummyobject, mb);
+    mb.free;
+end;
+
 procedure init;
 const
     fg_attrs : array of TSDL_GPUVertexAttribute =
@@ -407,10 +448,6 @@ const
         (location: 0; buffer_slot: 0; format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; offset: 0),
         (location: 1; buffer_slot: 0; format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; offset: 4*3)
     );
-var
-    i: Integer;
-    v0,v1,v2,v3: TVertex3D;
-    mb: TMeshBuilder;
 begin
     if not SDL_Init(SDL_INIT_VIDEO) then
     begin
@@ -457,39 +494,7 @@ begin
         Destroy;
     end;
 
-    dummyobject := Default(TMesh);
-
-    mb := TMeshBuilder.Create;
-    for i:=0 to 11 do
-    begin
-        with v0 do begin
-            x:=sin(i*2*PI/12);
-            y:=cos(i*2*PI/12);
-            z:=0.3;
-            r:=1; g:=0; b:=0;
-        end;
-        with v1 do begin
-            x:=sin(i*2*PI/12);
-            y:=cos(i*2*PI/12);
-            z:=-0.3;
-            r:=1; g:=1; b:=0;
-        end;
-        with v2 do begin
-            x:=sin((i+0.8)*2*PI/12);
-            y:=cos((i+0.8)*2*PI/12);
-            z:=0.1;
-            r:=1; g:=1; b:=1;
-        end;
-        with v3 do begin
-            x:=sin((i+0.8)*2*PI/12);
-            y:=cos((i+0.8)*2*PI/12);
-            z:=-0.1;
-            r:=1; g:=1; b:=1;
-        end;
-        mb.addQuad(v0,v1,v2,v3);
-    end;
-    rebuildMesh(@dummyobject, mb);
-    mb.free;
+    initmesh;
 
     DepthBuffer := TGPUTexture.Create(screen_width, screen_height, SDL_GPU_TEXTUREFORMAT_D16_UNORM, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
 end;
