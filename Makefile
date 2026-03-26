@@ -4,12 +4,14 @@ DEBUGFLAGS = -gl -gh
 FPCFLAGS = -Mobjfpc
 
 SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
-	solidcolor.frag.glsl uv_out.frag.glsl desaturate.frag.glsl \
+    simple_xyz_rgb_uv.vert.glsl \
+	solidcolor.frag.glsl uv_out.frag.glsl \
+	tex_color.frag.glsl desaturate.frag.glsl \
 	light_gradient.frag.glsl asdf.frag.glsl
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
-APPS = foo bar baz zot
+APPS = foo bar baz zot qux
 APPBINS = $(addprefix $(BUILDDIR)/,$(APPS))
 
 all: $(APPBINS) $(SHADEROBJS)
@@ -33,6 +35,10 @@ $(BUILDDIR)/baz: baz.pas
 $(BUILDDIR)/zot: zot.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) zot.pas
+
+$(BUILDDIR)/qux: qux.pas Matrix3DMath.pas
+	@mkdir -p $(BUILDDIR)
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) qux.pas
 
 $(BUILDDIR)/%.vert.spv: %.vert.glsl
 	@mkdir -p $(BUILDDIR)
