@@ -11,7 +11,7 @@ SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
-APPS = foo bar baz zot qux
+APPS = 00 01 02 03 04
 APPBINS = $(addprefix $(BUILDDIR)/,$(APPS))
 
 all: $(APPBINS) $(SHADEROBJS)
@@ -20,25 +20,25 @@ all: $(APPBINS) $(SHADEROBJS)
 clean:
 	rm -r $(BUILDDIR)
 
-$(BUILDDIR)/foo: foo.pas Matrix3DMath.pas
+$(BUILDDIR)/00: 00.pas Matrix3DMath.pas
 	@mkdir -p $(BUILDDIR)
-	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) foo.pas
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 00.pas
 
-$(BUILDDIR)/bar: bar.pas
+$(BUILDDIR)/01: 01.pas
 	@mkdir -p $(BUILDDIR)
-	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) bar.pas
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 01.pas
 
-$(BUILDDIR)/baz: baz.pas
+$(BUILDDIR)/02: 02.pas
 	@mkdir -p $(BUILDDIR)
-	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) baz.pas
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 02.pas
 
-$(BUILDDIR)/zot: zot.pas
+$(BUILDDIR)/03: 03.pas
 	@mkdir -p $(BUILDDIR)
-	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) zot.pas
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 03.pas
 
-$(BUILDDIR)/qux: qux.pas Matrix3DMath.pas
+$(BUILDDIR)/04: 04.pas Matrix3DMath.pas
 	@mkdir -p $(BUILDDIR)
-	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) qux.pas
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 04.pas
 
 $(BUILDDIR)/%.vert.spv: %.vert.glsl
 	@mkdir -p $(BUILDDIR)
