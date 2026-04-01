@@ -1,7 +1,7 @@
 BUILDDIR = build
 
 DEBUGFLAGS = -gl -gh
-FPCFLAGS = -Mobjfpc
+FPCFLAGS = -Mobjfpc -Fu3rdparty/Lazarus-SDL-3.0-Packages-and-Examples/packages/ -Fu3rdparty/LGenerics/lgenerics/
 
 SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
     simple_xyz_rgb_uv.vert.glsl \
@@ -11,7 +11,7 @@ SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
-APPS = 00 01 02 03 04
+APPS = 00 01 02 03 04 05
 APPBINS = $(addprefix $(BUILDDIR)/,$(APPS))
 
 all: $(APPBINS) $(SHADEROBJS)
@@ -39,6 +39,10 @@ $(BUILDDIR)/03: 03.pas
 $(BUILDDIR)/04: 04.pas Matrix3DMath.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 04.pas
+
+$(BUILDDIR)/05: 05.pas
+	@mkdir -p $(BUILDDIR)
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 05.pas
 
 $(BUILDDIR)/%.vert.spv: %.vert.glsl
 	@mkdir -p $(BUILDDIR)

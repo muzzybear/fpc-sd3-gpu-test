@@ -2,8 +2,6 @@
 {$H+}
 {$modeswitch ADVANCEDRECORDS}
 
-{$UNITPATH 3rdparty/Lazarus-SDL-3.0-Packages-and-Examples/packages/}
-
 uses
     Sysutils, SDL3, ctypes, matrix, Matrix3DMath, Math;
 

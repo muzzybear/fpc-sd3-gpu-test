@@ -1,6 +1,6 @@
-[submodule "3rdparty/SDL3-for-Pascal"]
-	path = 3rdparty/SDL3-for-Pascal
-	url = https://github.com/PascalGameDevelopment/SDL3-for-Pascal
 [submodule "3rdparty/Lazarus-SDL-3.0-Packages-and-Examples"]
 	path = 3rdparty/Lazarus-SDL-3.0-Packages-and-Examples
 	url = https://github.com/sechshelme/Lazarus-SDL-3.0-Packages-and-Examples
+[submodule "3rdparty/LGenerics"]
+	path = 3rdparty/LGenerics
+	url = https://github.com/avk959/LGenerics
