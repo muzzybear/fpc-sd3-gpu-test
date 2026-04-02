@@ -465,20 +465,24 @@ begin
 end;
 
 type
-    TTextureAtlas = class
-        uvrects: array of TSDL_FRect;
-    public
-        function getUV(i: Integer): TSDL_FRect;
-        function addUV(uv: TSDL_FRect): Integer;
+    TUVRect = record
+        x0,y0,x1,y1 : Single;
     end;
 
-function TTextureAtlas.getUV(i: Integer): TSDL_FRect;
+    TTextureAtlas = class
+        uvrects: array of TUVRect;
+    public
+        function getUV(i: Integer): TUVRect;
+        function addUV(uv: TUVRect): Integer;
+    end;
+
+function TTextureAtlas.getUV(i: Integer): TUVRect;
 begin
     // TODO bounds check?
     result := uvrects[i];
 end;
 
-function TTextureAtlas.addUV(uv: TSDL_FRect): Integer;
+function TTextureAtlas.addUV(uv: TUVRect): Integer;
 begin
     Result := Length(uvrects);
     SetLength(uvrects, Length(uvrects)+1);
@@ -491,8 +495,11 @@ var
 
 procedure initatlas;
 var
-    rect: TSDL_FRect;
     foo: PSDL_Surface;
+const
+    BearUV : TUVRect = (x0:0; y0:0; x1:1; y1:1);
+    NoseUV : TUVRect = (x0:0.75; y0:0.4; x1:0.95; y1:0.6);
+
 begin
     atlas := TTextureAtlas.Create;
     // TODO load textures, combine them into atlas, generate UV rects
@@ -512,10 +519,8 @@ begin
     atlastex := TGPUTexture.Create(1024,1024,SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,SDL_GPU_TEXTUREUSAGE_SAMPLER);
     atlastex.UploadToGPU(foo);
 
-    rect := Default(TSDL_FRect);
-    rect.w := 1.0;
-    rect.h := 1.0;
-    atlas.addUV(rect);
+    atlas.addUV(BearUV);
+    atlas.addUV(NoseUV);
 end;
 
 type
@@ -593,10 +598,6 @@ begin
     end;
 end;
 
-const
-    BearUV : array[0..3] of Single = (0,0,1,1);
-    NoseUV : array[0..3] of Single = (0.75,0.4,0.95,0.6);
-
 procedure initmesh;
 var
     i,j: Integer;
@@ -604,7 +605,7 @@ var
     mb: TMeshBuilder;
     tmp: Single;
     pcell: PMapCell;
-    puv : PSingle = @BearUV;
+    uv : TUVRect;
 begin
     dummyobject := Default(TMesh);
 
@@ -615,36 +616,36 @@ begin
         begin
             pcell := @gamemap.cells[i][j];
             if pcell^.floorKind = None then continue;
-            if pcell^.floorKind = Bear then puv := @BearUV;
-            if pcell^.floorKind = Nose then puv := @NoseUV;
+            if pcell^.floorKind = Bear then uv := atlas.getUV(0);
+            if pcell^.floorKind = Nose then uv := atlas.getUV(1);
             tmp := 0.5;
             with v0 do begin
                 x:=j;
                 y:=pcell^.floorHeight;
                 z:=i;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=puv[0]; v:=puv[1];
+                u:=uv.x0; v:=uv.y0;
             end;
             with v1 do begin
                 x:=j+1;
                 y:=pcell^.floorHeight;
                 z:=i;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=puv[2]; v:=puv[1];
+                u:=uv.x1; v:=uv.y0;
             end;
             with v2 do begin
                 x:=j;
                 y:=pcell^.floorHeight;
                 z:=i+1;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=puv[0]; v:=puv[3];
+                u:=uv.x0; v:=uv.y1;
             end;
             with v3 do begin
                 x:=j+1;
                 y:=pcell^.floorHeight;
                 z:=i+1;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=puv[2]; v:=puv[3];
+                u:=uv.x1; v:=uv.y1;
             end;
             mb.addQuad(v0,v1,v2,v3);
         end;
