@@ -519,8 +519,10 @@ begin
 end;
 
 type
+    TSurfaceKind = (None, Bear, Nose);
+
     TMapCell = record
-        hasFloor, hasCeiling: Boolean;
+        floorKind, ceilingKind: TSurfaceKind;
         floorHeight, ceilingHeight: Single;
     end;
     PMapCell = ^TMapCell;
@@ -556,16 +558,24 @@ procedure initmap;
 const
     data: array of string = (
         '############',
-        '#..........#',
-        '#.#####.##.#',
-        '#....##....#',
-        '#.#.....####',
-        '#.......#..#',
-        '###........#',
-        '#....#..#..#',
-        '#.#........#',
+        '#......N...#',
+        '#.#####N##.#',
+        '#....##N...#',
+        '#.#....N####',
+        '#NNNNNNNNNN#',
+        '###....N...#',
+        '#....#.N#..#',
+        '#.#....N...#',
         '############'
     );
+    function CharToKind(ch: Char) : TSurfaceKind;
+    begin
+        case ch of
+            '.': result := Bear;
+            'N': Result := Nose;
+            else result := None;
+        end;
+    end;
 var
     x,y: Integer;
 begin
@@ -576,12 +586,16 @@ begin
         begin
             gamemap.cells[y][x] := Default(TMapCell);
             with gamemap.cells[y][x] do begin
-                hasFloor := data[y][x+1] <> '#';
+                floorKind := CharToKind(data[y][x+1]);
                 floorHeight := 0;
             end;
         end;
     end;
 end;
+
+const
+    BearUV : array[0..3] of Single = (0,0,1,1);
+    NoseUV : array[0..3] of Single = (0.75,0.4,0.95,0.6);
 
 procedure initmesh;
 var
@@ -590,6 +604,7 @@ var
     mb: TMeshBuilder;
     tmp: Single;
     pcell: PMapCell;
+    puv : PSingle = @BearUV;
 begin
     dummyobject := Default(TMesh);
 
@@ -599,35 +614,37 @@ begin
         for j:=0 to gamemap.width-1 do
         begin
             pcell := @gamemap.cells[i][j];
-            if not pcell^.hasFloor then continue;
+            if pcell^.floorKind = None then continue;
+            if pcell^.floorKind = Bear then puv := @BearUV;
+            if pcell^.floorKind = Nose then puv := @NoseUV;
             tmp := 0.5;
             with v0 do begin
                 x:=j;
                 y:=pcell^.floorHeight;
                 z:=i;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=0; v:=0;
+                u:=puv[0]; v:=puv[1];
             end;
             with v1 do begin
                 x:=j+1;
                 y:=pcell^.floorHeight;
                 z:=i;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=1; v:=0;
+                u:=puv[2]; v:=puv[1];
             end;
             with v2 do begin
                 x:=j;
                 y:=pcell^.floorHeight;
                 z:=i+1;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=0; v:=1;
+                u:=puv[0]; v:=puv[3];
             end;
             with v3 do begin
                 x:=j+1;
                 y:=pcell^.floorHeight;
                 z:=i+1;
                 r:=tmp*0.5+0.5; g:=r; b:=r;
-                u:=1; v:=1;
+                u:=puv[2]; v:=puv[3];
             end;
             mb.addQuad(v0,v1,v2,v3);
         end;
