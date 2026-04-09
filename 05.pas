@@ -82,6 +82,25 @@ var
     distmap : specialize TMap<Integer>;
 
 procedure initmap;
+
+    procedure makeroom(x,y,w,h:Integer);
+    var
+        i, j: Integer;
+    begin
+        for i:=x to x+w-1 do begin
+            map[y,i] := 0;
+            map[y+h-1,i] := 0;
+        end;
+        for j:=y+1 to y+h-2 do begin
+            map[j,x] := 0;
+            for i:=x+1 to x+w-2 do begin
+                map[j,i] := 1;
+            end;
+            map[j,x+w-1] := 0;
+        end;
+
+    end;
+
 var
     x, y: Integer;
 begin
@@ -91,6 +110,15 @@ begin
             map[y,x] := (x*x+y*y) and (16+4);
         end;
     end;
+
+    makeroom(5,3,8,5);
+    makeroom(16,7,7,10);
+    makeroom(8,11,6,12);
+    map[3,8] := 1;
+    map[19,8] := 1;
+    map[12,13] := 1;
+    map[12,16] := 1;
+    map[16,20] := 1;
 
     distmap := specialize TMap<Integer>.Create(33,33);
     distmap.Clear;
