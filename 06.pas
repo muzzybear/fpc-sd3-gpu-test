@@ -91,7 +91,6 @@ var
 
     procedure earclip(idx: Integer);
     begin
-        // emit triangle vertices
         // TODO index-only version
         v(p[idx]);
         v(p[(idx+1) mod Length(p)]);
@@ -136,9 +135,19 @@ begin
     end;
 end;
 
-procedure render_polygon();
+procedure render_polygon(points: array of TSDL_FPoint);
 var
     mb : TMeshBuilder;
+
+begin
+    mb := TMeshBuilder.Create;
+    triangulate(mb, points);
+    SDL_RenderGeometry(Renderer, nil, mb.getVertices, mb.numVertices, nil, 0);
+    mb.free;
+
+    SDL_SetRenderDrawColorFloat(Renderer, 1.0, 0.4, 1.0, 1.0);
+    SDL_RenderLines(Renderer, @points[0], Length(points));
+end;
 
 const
     foo : array of TSDL_FPoint = (
@@ -152,19 +161,8 @@ const
         (x:133;y:233)
     );
 
-begin
-    mb := TMeshBuilder.Create;
-    triangulate(mb, foo);
-    SDL_RenderGeometry(Renderer, nil, mb.getVertices, mb.numVertices, nil, 0);
-    mb.free;
-
-    SDL_SetRenderDrawColorFloat(Renderer, 1.0, 0.4, 1.0, 1.0);
-    SDL_RenderLines(Renderer, @foo[0], Length(foo));
-end;
-
 procedure render;
 var
-    rect: TSDL_FRect;
     x, y: Integer;
     d: Integer;
 
@@ -172,10 +170,7 @@ begin
     SDL_SetRenderDrawColorFloat(Renderer, 0.2, 0.2, 0.2, 1.0);
     SDL_RenderClear(Renderer);
 
-    rect.w := 17;
-    rect.h := 11;
-
-    render_polygon;
+    render_polygon(foo);
 
     SDL_RenderPresent(Renderer);
 
