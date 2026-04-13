@@ -135,45 +135,86 @@ begin
     end;
 end;
 
-procedure render_polygon(points: array of TSDL_FPoint);
+type
+    TPolygon = record
+        points: array of TSDL_FPoint;
+    end;
+
+procedure render_polygon(poly: TPolygon);
 var
     mb : TMeshBuilder;
 
 begin
     mb := TMeshBuilder.Create;
-    triangulate(mb, points);
+    triangulate(mb, poly.points);
     SDL_RenderGeometry(Renderer, nil, mb.getVertices, mb.numVertices, nil, 0);
     mb.free;
 
     SDL_SetRenderDrawColorFloat(Renderer, 1.0, 0.4, 1.0, 1.0);
-    SDL_RenderLines(Renderer, @points[0], Length(points));
+    SDL_RenderLines(Renderer, @poly.points[0], Length(poly.points));
+end;
+
+procedure bevel_polygon(var poly: TPolygon; amount: Single);
+var
+    foo : array of TSDL_FPoint;
+    i: Integer;
+    a,b,ab : TSDL_FPoint;
+    d : Single;
+begin
+    // shrink each edge from both sides by amount, make new edges between
+    for i:=0 to Length(poly.points)-1 do begin
+        a := poly.points[i];
+        b := poly.points[(i+1) mod Length(poly.points)];
+        ab.x := b.x - a.x;
+        ab.y := b.y - a.y;
+        d := sqrt(ab.x*ab.x + ab.y*ab.y);
+        // TODO if d<amount*2 we should collapse the vertices to midpoint instead
+        a.x := a.x + ab.x * amount / d;
+        a.y := a.y + ab.y * amount / d;
+        b.x := b.x - ab.x * amount / d;
+        b.y := b.y - ab.y * amount / d;
+        insert(a, foo, Length(foo));
+        insert(b, foo, Length(foo));
+    end;
+    poly.points := foo;
 end;
 
 const
     foo : array of TSDL_FPoint = (
-        (x:100;y:200),
+        (x:  0;y:100),
+        (x:100;y:  0),
         (x:200;y:100),
-        (x:300;y:200),
-        (x:200;y:300),
-        (x:166;y:266),
-        (x:233;y:200),
-        (x:200;y:166),
-        (x:133;y:233)
+        (x:100;y:200),
+        (x: 66;y:166),
+        (x:133;y:100),
+        (x:100;y: 66),
+        (x: 33;y:133)
     );
 
 procedure render;
 var
     x, y: Integer;
-    d: Integer;
+    i: Integer;
+    p: TPolygon;
 
 begin
     SDL_SetRenderDrawColorFloat(Renderer, 0.2, 0.2, 0.2, 1.0);
     SDL_RenderClear(Renderer);
 
-    render_polygon(foo);
+    insert(foo, p.points, 0);
+    for i:=0 to Length(p.points) do p.points[i].x := p.points[i].x + 10;
+    for i:=0 to Length(p.points) do p.points[i].y := p.points[i].y + 10;
+    render_polygon(p);
+
+    for i:=0 to Length(p.points) do p.points[i].x := p.points[i].x + 210;
+    bevel_polygon(p, 10);
+    render_polygon(p);
+
+    for i:=0 to Length(p.points) do p.points[i].x := p.points[i].x + 210;
+    bevel_polygon(p, 4);
+    render_polygon(p);
 
     SDL_RenderPresent(Renderer);
-
 end;
 
 var
