@@ -154,9 +154,8 @@ begin
     SDL_RenderLines(Renderer, @poly.points[0], Length(poly.points));
 end;
 
-procedure bevel_polygon(var poly: TPolygon; amount: Single);
+function bevel_polygon(const poly: TPolygon; amount: Single): TPolygon;
 var
-    foo : array of TSDL_FPoint;
     i: Integer;
     a,b,ab : TSDL_FPoint;
     d : Single;
@@ -173,10 +172,9 @@ begin
         a.y := a.y + ab.y * amount / d;
         b.x := b.x - ab.x * amount / d;
         b.y := b.y - ab.y * amount / d;
-        insert(a, foo, Length(foo));
-        insert(b, foo, Length(foo));
+        insert(a, Result.points, Length(Result.points));
+        insert(b, Result.points, Length(Result.points));
     end;
-    poly.points := foo;
 end;
 
 const
@@ -207,11 +205,11 @@ begin
     render_polygon(p);
 
     for i:=0 to Length(p.points) do p.points[i].x := p.points[i].x + 210;
-    bevel_polygon(p, 10);
+    p := bevel_polygon(p, 10);
     render_polygon(p);
 
     for i:=0 to Length(p.points) do p.points[i].x := p.points[i].x + 210;
-    bevel_polygon(p, 4);
+    p := bevel_polygon(p, 4);
     render_polygon(p);
 
     SDL_RenderPresent(Renderer);
