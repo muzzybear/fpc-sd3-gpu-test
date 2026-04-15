@@ -21,8 +21,6 @@ var
 
 // -----
 
-procedure initgui; forward;
-
 procedure init;
 begin
     if not SDL_Init(SDL_INIT_VIDEO) then
@@ -65,8 +63,6 @@ begin
     TTF_SetFontWrapAlignment(CenteredFont, TTF_HORIZONTAL_ALIGN_CENTER);
 
     TextEngine := TTF_CreateRendererTextEngine(Renderer);
-
-    initgui;
 end;
 
 type
@@ -88,6 +84,8 @@ type
 
     TRenderObjectList = specialize TFPGObjectList<TRenderObject>;
 
+    TGUIEvent = procedure(Sender: TObject) of object;
+
     TGUI = class(TRenderObject)
     private
         children : TRenderObjectList;
@@ -97,6 +95,8 @@ type
         procedure render; override;
 
         procedure MouseMove(var msg: TGUIMessage); message Integer(gmMouseMove);
+        procedure MouseDown(var msg: TGUIMessage); message Integer(gmMouseDown);
+        procedure MouseUp(var msg: TGUIMessage);   message Integer(gmMouseUp);
 
         procedure add(obj: TRenderObject);
     end;
@@ -118,10 +118,14 @@ type
 
     TButton = class(TBoundedRenderObject)
         text_: String;
+        FClickEvent : TGUIEvent;
+
+        procedure MouseDown(var msg: TGUIMessage); message Integer(gmMouseDown);
     public
         procedure render; override;
 
         property Text: String read text_ write text_;
+        property OnClick: TGUIEvent read FClickEvent write FClickEvent;
     end;
 
 constructor TGUI.Create;
@@ -154,6 +158,20 @@ begin
     for obj in children do obj.Dispatch(msg);
 end;
 
+procedure TGUI.MouseDown(var msg: TGUIMessage);
+var
+    obj : TRenderObject;
+begin
+    for obj in children do obj.Dispatch(msg);
+end;
+
+procedure TGUI.MouseUp(var msg: TGUIMessage);
+var
+    obj : TRenderObject;
+begin
+    for obj in children do obj.Dispatch(msg);
+end;
+
 function TBoundedRenderObject.getFRect: TSDL_FRect;
 begin
     result.x := X;
@@ -173,6 +191,13 @@ begin
     point.y := msg.move.y;
     mousein := SDL_PointInRectFloat(@point, @rect);
 end;
+
+procedure TButton.MouseDown(var msg: TGUIMessage);
+begin
+    if MouseInBounds and assigned(FClickEvent) then
+        FClickEvent(self);
+end;
+
 
 procedure TButton.render;
 var
@@ -195,26 +220,42 @@ begin
     TTF_DestroyText(ttf_text);
 end;
 
-var
-    gui: TGUI;
+type
+    TDummyGUI = class(TGUI)
+        procedure foo(Sender: TObject);
+    public
+        constructor Create;
+    end;
 
-procedure initgui;
+var
+    gui: TDummyGUI;
+
+procedure TDummyGUI.foo(Sender: TObject);
+begin
+    if Sender is TButton then
+        with Sender as TButton do
+            Text := 'Boink!';
+end;
+
+constructor TDummyGUI.Create;
 var
     tmp: TButton;
 begin
-    gui := TGUI.Create;
+    inherited;
 
     tmp := TButton.Create;
     tmp.x := 100; tmp.y := 200;
     tmp.width := 100; tmp.height := 40;
     tmp.text := 'Yatta!';
-    gui.add(tmp);
+    tmp.onclick := @foo;
+    self.add(tmp);
 
     tmp := TButton.Create;
     tmp.x := 300; tmp.y := 200;
     tmp.width := 100; tmp.height := 40;
     tmp.text := 'Happy Go Lucky!';
-    gui.add(tmp);
+    tmp.onclick := @foo;
+    self.add(tmp);
 end;
 
 procedure render;
@@ -256,6 +297,20 @@ begin
                 guimsg.move.y := Round(event.motion.y);
                 gui.Dispatch(guimsg);
             end;
+            if event._type = SDL_EVENT_MOUSE_BUTTON_DOWN then begin
+                guimsg.msgtype := gmMouseDown;
+                guimsg.mousedown.btn := Round(event.button.button);
+                guimsg.mousedown.x := Round(event.button.x);
+                guimsg.mousedown.y := Round(event.button.y);
+                gui.Dispatch(guimsg);
+            end;
+            if event._type = SDL_EVENT_MOUSE_BUTTON_UP then begin
+                guimsg.msgtype := gmMouseUp;
+                guimsg.mouseup.btn := Round(event.button.button);
+                guimsg.mouseup.x := Round(event.button.x);
+                guimsg.mouseup.y := Round(event.button.y);
+                gui.Dispatch(guimsg);
+            end;
             if event._type = SDL_EVENT_KEY_DOWN then begin
                 if event.key.key = SDLK_ESCAPE then begin
                     quitting := true;
@@ -269,6 +324,8 @@ end;
 
 begin
     init;
+
+    gui := TDummyGUI.Create;
 
     mainloop;
 
