@@ -11,7 +11,7 @@ SHADERS = fullscreen.vert.glsl simple_xyz_rgb.vert.glsl \
 
 SHADEROBJS = $(patsubst %.glsl,$(BUILDDIR)/%.spv,$(SHADERS))
 
-APPS = 00 01 02 03 04 05 06
+APPS = 00 01 02 03 04 05 06 07
 APPBINS = $(addprefix $(BUILDDIR)/,$(APPS))
 
 all: $(APPBINS) $(SHADEROBJS)
@@ -47,6 +47,10 @@ $(BUILDDIR)/05: 05.pas
 $(BUILDDIR)/06: 06.pas Meshbuilder.pas
 	@mkdir -p $(BUILDDIR)
 	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 06.pas
+
+$(BUILDDIR)/07: 07.pas
+	@mkdir -p $(BUILDDIR)
+	@fpc $(FPCFLAGS) $(DEBUGFLAGS) -l- -v0 -FE$(BUILDDIR) 07.pas
 
 $(BUILDDIR)/%.vert.spv: %.vert.glsl
 	@mkdir -p $(BUILDDIR)
